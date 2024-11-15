@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <sys/time.h>
 #include <sys/types.h>
@@ -15,6 +16,9 @@
 
 #include "find_min_max.h"
 #include "utils.h"
+
+int pnum;
+pid_t child_pids[100]; // Предполагаем, что максимальное количество процессов не превышает 100
 
 void write_result_to_file(int min, int max, int index) {
     char filename[20];
@@ -41,10 +45,17 @@ void read_result_from_file(int *min, int *max, int index) {
     remove(filename);
 }
 
+void kill_children(int signum) {
+    // Обработчик сигнала SIGALRM
+    for (int i = 0; i < pnum; i++) {
+        kill(child_pids[i], SIGKILL);
+    }
+}
+
 int main(int argc, char **argv) {
     int seed = -1;
     int array_size = -1;
-    int pnum = -1;
+    int timeout = -1;
     bool with_files = false;
 
     while (true) {
@@ -53,6 +64,7 @@ int main(int argc, char **argv) {
         static struct option options[] = {{"seed", required_argument, 0, 0},
                                           {"array_size", required_argument, 0, 0},
                                           {"pnum", required_argument, 0, 0},
+                                          {"timeout", required_argument, 0, 0},
                                           {"by_files", no_argument, 0, 'f'},
                                           {0, 0, 0, 0}};
 
@@ -74,6 +86,9 @@ int main(int argc, char **argv) {
                         pnum = atoi(optarg);
                         break;
                     case 3:
+                        timeout = atoi(optarg);
+                        break;
+                    case 4:
                         with_files = true;
                         break;
                     default:
@@ -96,7 +111,7 @@ int main(int argc, char **argv) {
     }
 
     if (seed == -1 || array_size == -1 || pnum == -1) {
-        printf("Usage: %s --seed \"num\" --array_size \"num\" --pnum \"num\" \n",
+        printf("Usage: %s --seed \"num\" --array_size \"num\" --pnum \"num\" [--timeout \"num\"]\n",
                argv[0]);
         return 1;
     }
@@ -109,6 +124,12 @@ int main(int argc, char **argv) {
     gettimeofday(&start_time, NULL);
 
     int pipefd[pnum][2];
+
+    if (timeout > 0) {
+        signal(SIGALRM, kill_children);
+        alarm(timeout);
+    }
+
     for (int i = 0; i < pnum; i++) {
         if (!with_files) {
             if (pipe(pipefd[i]) == -1) {
@@ -136,6 +157,8 @@ int main(int argc, char **argv) {
                     close(pipefd[i][1]);
                 }
                 return 0;
+            } else {
+                child_pids[i] = child_pid;
             }
         } else {
             printf("Fork failed!\n");
@@ -146,6 +169,10 @@ int main(int argc, char **argv) {
     while (active_child_processes > 0) {
         wait(NULL);
         active_child_processes -= 1;
+    }
+
+    if (timeout > 0) {
+        alarm(0); // Отключаем таймер, если все дочерние процессы завершились
     }
 
     struct MinMax min_max;
