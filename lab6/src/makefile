@@ -1,32 +1,49 @@
+# Компилятор
+CC = gcc
+
+# Флаги компилятора
+CFLAGS = -Wall -Wextra -Werror -pthread
+
 # Имена исполняемых файлов
-CLIENT_EXEC = client
-SERVER_EXEC = server
+CLIENT = client
+SERVER = server
 
 # Исходные файлы
 CLIENT_SRC = client.c
 SERVER_SRC = server.c
 COMMON_SRC = common.c
+COMMON_H = common.h
 
-# Флаги компиляции
-CFLAGS = -Wall -Wextra -pthread
+# Объектные файлы
+CLIENT_OBJ = client.o
+SERVER_OBJ = server.o
+COMMON_OBJ = common.o
 
-# Компилятор
-CC = gcc
+# Цель по умолчанию
+all: $(CLIENT) $(SERVER)
 
-# Правила для сборки клиента и сервера
-all: $(CLIENT_EXEC) $(SERVER_EXEC)
+# Цель для клиента
+$(CLIENT): $(CLIENT_OBJ) $(COMMON_OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
 
-$(CLIENT_EXEC): $(CLIENT_SRC) $(COMMON_SRC)
-	$(CC) $(CFLAGS) -o $(CLIENT_EXEC) $(CLIENT_SRC) $(COMMON_SRC)
+# Цель для сервера
+$(SERVER): $(SERVER_OBJ) $(COMMON_OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
 
-$(SERVER_EXEC): $(SERVER_SRC) $(COMMON_SRC)
-	$(CC) $(CFLAGS) -o $(SERVER_EXEC) $(SERVER_SRC) $(COMMON_SRC)
+# Цель для объектного файла клиента
+$(CLIENT_OBJ): $(CLIENT_SRC) $(COMMON_H)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Правило для очистки
+# Цель для объектного файла сервера
+$(SERVER_OBJ): $(SERVER_SRC) $(COMMON_H)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Цель для объектного файла common
+$(COMMON_OBJ): $(COMMON_SRC) $(COMMON_H)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Цель для очистки
 clean:
-	rm -f $(CLIENT_EXEC) $(SERVER_EXEC)
+	rm -f $(CLIENT) $(SERVER) $(CLIENT_OBJ) $(SERVER_OBJ) $(COMMON_OBJ)
 
-# Правило для перекомпиляции
-rebuild: clean all
-
-.PHONY: all clean rebuild
+.PHONY: all clean

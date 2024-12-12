@@ -18,6 +18,7 @@ struct FactorialArgs {
     uint64_t mod;
 };
 
+// Функция для вычисления факториала
 uint64_t Factorial(const struct FactorialArgs *args) {
     uint64_t ans = 1;
     for (uint64_t i = args->begin; i <= args->end; i++) {
@@ -26,6 +27,7 @@ uint64_t Factorial(const struct FactorialArgs *args) {
     return ans;
 }
 
+// Функция для выполнения задачи в потоке
 void *ThreadFactorial(void *args) {
     struct FactorialArgs *fargs = (struct FactorialArgs *)args;
     return (void *)(uint64_t *)Factorial(fargs);
@@ -35,6 +37,7 @@ int main(int argc, char **argv) {
     int tnum = -1;
     int port = -1;
 
+    // Обработка аргументов командной строки
     while (true) {
         static struct option options[] = {{"port", required_argument, 0, 0},
                                           {"tnum", required_argument, 0, 0},
@@ -68,17 +71,20 @@ int main(int argc, char **argv) {
         }
     }
 
+    // Проверка аргументов
     if (port == -1 || tnum == -1) {
         fprintf(stderr, "Using: %s --port 20001 --tnum 4\n", argv[0]);
         return 1;
     }
 
+    // Создание серверного сокета
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         fprintf(stderr, "Can not create server socket!");
         return 1;
     }
 
+    // Настройка адреса сервера
     struct sockaddr_in server;
     server.sin_family = AF_INET;
     server.sin_port = htons((uint16_t)port);
@@ -87,12 +93,14 @@ int main(int argc, char **argv) {
     int opt_val = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(opt_val));
 
+    // Привязка сокета
     int err = bind(server_fd, (struct sockaddr *)&server, sizeof(server));
     if (err < 0) {
         fprintf(stderr, "Can not bind to socket!");
         return 1;
     }
 
+    // Прослушивание сокета
     err = listen(server_fd, 128);
     if (err < 0) {
         fprintf(stderr, "Could not listen on socket\n");
@@ -101,6 +109,7 @@ int main(int argc, char **argv) {
 
     printf("Server listening at %d\n", port);
 
+    // Основной цикл сервера
     while (true) {
         struct sockaddr_in client;
         socklen_t client_len = sizeof(client);
